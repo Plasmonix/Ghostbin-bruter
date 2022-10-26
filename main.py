@@ -1,44 +1,50 @@
-import os, random, time, json, itertools
-from selenium import webdriver
-import undetected_chromedriver as uc
-from fake_useragent import UserAgent
-from colorama import Fore
+import os, requests, random, time, ctypes, threading
 
-class Viewbot:
-    def __init__(self):
-        self.config = json.load(open('./data/config.json', 'r+'))
-        self.proxies = itertools.cycle(open('./data/proxies.txt').read().splitlines())
-        self.ua = UserAgent()
+valid, invalid = 0,0
+lock = threading.Lock() 
+def Banner():
+        os.system('cls')
+        print('''\u001b[36m
+      ▄▄ •  ▄ .▄      .▄▄ · ▄▄▄▄▄▄▄▄▄· ▪   ▐ ▄     ▄▄▄▄· ▄▄▄  ▄• ▄▌▄▄▄▄▄▄▄▄ .▄▄▄  
+     ▐█ ▀ ▪██▪▐█▪     ▐█ ▀. •██  ▐█ ▀█▪██ •█▌▐█    ▐█ ▀█▪▀▄ █·█▪██▌•██  ▀▄.▀·▀▄ █·
+     ▄█ ▀█▄██▀▐█ ▄█▀▄ ▄▀▀▀█▄ ▐█.▪▐█▀▀█▄▐█·▐█▐▐▌    ▐█▀▀█▄▐▀▀▄ █▌▐█▌ ▐█.▪▐▀▀▪▄▐▀▀▄ 
+     ▐█▄▪▐███▌▐▀▐█▌.▐▌▐█▄▪▐█ ▐█▌·██▄▪▐█▐█▌██▐█▌    ██▄▪▐█▐█•█▌▐█▄█▌ ▐█▌·▐█▄▄▌▐█•█▌
+     ·▀▀▀▀ ▀▀▀ · ▀█▄▀▪ ▀▀▀▀  ▀▀▀ ·▀▀▀▀ ▀▀▀▀▀ █▪    ·▀▀▀▀ .▀  ▀ ▀▀▀  ▀▀▀  ▀▀▀ .▀  ▀\u001b[37m]
+''')
 
-    def ui(self):
-        os.system('cls && title Youtube Viewbot ^| github.com/Plasmonix' if os.name == "nt" else 'clear') 
-        print(f"""{Fore.RED}                                                           
-         __ __         _       _          _____ _           _       _     
-        |  |  |___ _ _| |_ _ _| |_ ___   |  |  |_|___ _ _ _| |_ ___| |_   
-        |_   _| . | | |  _| | | . | -_|  |  |  | | -_| | | | . | . |  _|  
-          |_| |___|___|_| |___|___|___|   \___/|_|___|_____|___|___|_|    
-        {Fore.RESET}""")
+def UpdateTitle():
+    while True:
+        elapsed = time.strftime('%H:%M:%S', time.gmtime(time.time() - start)) 
+        ctypes.windll.kernel32.SetConsoleTitleW("[Ghostbin Bruter] - Valid: %s | Invalid: %s | Time elapsed: %s" % (valid, invalid,elapsed))
+        time.sleep(0.4)
 
-    def open_url(self, ua, sleep_time, proxy):
-        self.options = webdriver.ChromeOptions()
-        self.options.add_argument("--incognito")
-        self.options.add_argument('--start-maximized')
-        self.options.add_argument('user-agent=%s' % ua.random)
-        self.options.add_argument("--proxy-server=%s" % proxy)
-        self.options.headless = True
+def Bruter():
+    global valid, invalid
+    try:
+        code = ''.join(random.choice('abcdefghijklmnopqrstuvwxyz0123456789') for i in range(5))
+        headers = {"Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0","Referer":"https://ghostbin.com/","Connection":"close","Accept-Language":"en-US,en;q=0.5","Accept-Encoding":"gzip, deflate, br","Content-Type":"application/x-www-form-urlencoded"}
+        url = f'https://ghostbin.com/paste/{code}'
+        r = requests.get(url, headers=headers)
 
-        self.browser = uc.Chrome(options=self.options)
-        
-        self.browser.get(self.config["url"])
-        time.sleep(sleep_time)
-        self.browser.quit()
-
-    def main(self):
-        self.ui()
-        for _ in range(self.config["views"]):
-            self.sleeptime = random.randint(self.config["min_watch"], self.config["max_watch"])
-            self.open_url(self.ua, self.sleeptime, next(self.proxies))
+        if (r.status_code == 200):
+            lock.acquire()
+            print(f'[\u001b[32mVALID\u001b[37m] {url}')
+            with open("hits.txt", "a+") as fp:
+                fp.write(url+"\n")
+            valid += 1
+            lock.release()
+        else:
+            lock.acquire()
+            print(f'[\u001b[31mINVALID\u001b[37m] {url}')
+            invalid += 1
+            lock.release()
+    except:
+        print('[\u001b[31mERROR\u001b[37m] Failed to establish connection.')
 
 if __name__ == "__main__":
-    bot = Viewbot()
-    bot.main()
+    Banner()
+    start = time.time()
+    threading.Thread(target=UpdateTitle,daemon=True).start() 
+    while True:
+        for i in range(100):
+            threading.Thread(target=Bruter).start()
