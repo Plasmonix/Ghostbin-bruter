@@ -4,4 +4,4 @@
   - pip install -r requirements.txt
 
 🖥 Starting
-  - ./main.py
+  - python main.py
